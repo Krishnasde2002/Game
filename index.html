@@ -1,0 +1,244 @@
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title></title>Game</title>
+        <style>
+  :root{
+    --pink1:#ff9a9e; --pink2:#fad0c4;
+    --glass:rgba(0,0,0,.55);
+    --accent:#ff4e70;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; color:#fff;
+    background:linear-gradient(135deg,var(--pink1),var(--pink2));
+    overflow:hidden; text-align:center;
+  }
+  .game{
+    width:min(92vw,560px); min-height:60vh; padding:28px 22px;
+    background:var(--glass); border-radius:22px;
+    box-shadow:0 10px 40px rgba(0,0,0,.25);
+    position:relative; /* for runaway bounds */
+    display:flex; flex-direction:column; gap:18px;
+    animation:fadeIn .6s ease;
+  }
+  /* Responsive Mobile Styling */
+.options {
+  display: flex;
+  flex-direction: column;   /* Mobile ke liye options niche niche aayenge */
+  gap: 15px;
+}
+
+button {
+  width: 100%;              /* Mobile screen pe button poora spread hoga */
+  max-width: 250px;
+  margin: auto;
+  font-size: 18px;
+  padding: 12px;
+}
+  h1{margin:0 0 6px; font-size:1.9rem}
+  #question{font-size:1.2rem; line-height:1.35}
+  .options{
+    position:relative; /* runaway uses this */
+    margin-top:6px; min-height:150px;
+    display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:12px;
+  }
+  .btn{
+    border:none; padding:12px 18px; border-radius:12px;
+    background:var(--accent); color:#fff; font-size:1rem; cursor:pointer;
+    box-shadow:0 6px 18px rgba(255,78,112,.45);
+    transition:transform .15s ease, background .2s ease;
+    touch-action:manipulation; user-select:none;
+  }
+  .btn:hover{transform:scale(1.05)}
+  .btn.alt{ background:#ff7aa5; }
+  #message{min-height:26px; color:#ffe08a; font-weight:700}
+  .runaway{
+    position:absolute; /* will be moved inside .options */
+    will-change:transform,left,top;
+  }
+  .footer-note{opacity:.8; font-size:.9rem}
+  @keyframes fadeIn { from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none} }
+</style>
+</head>
+    <body>
+  <div class="game" id="game">
+    <h1>Hello Players!</h1>
+    <div id="question">Ready for a Romantic Quiz?</div>
+
+    <div class="options" id="options"></div>
+    <div id="message"></div>
+
+    <div class="footer-note">Answer with your heart… or the buttons will run away 😜</div>
+  </div>
+
+<script>
+/* ------------ Quiz Data ------------ */
+const quiz = [
+  {
+    question: "Do you like me? 💖",
+    options: ["Yes 😍", "No 🙄"],
+    correct: 0,
+    blockNo: true // make “No” runaway
+  },
+  {
+    question: "Agar ek wish mile, tum mujhe kya dogi?",
+    options: ["🏍 Bike", "💍 Engagement Ring", "😜 Thappad"],
+    correct: 1
+  },
+  {
+    question: "Perfect date kahan hogi?",
+    options: ["🍕 Pizza Shop", "🌌 Under the Stars", "🏏 Cricket Ground"],
+    correct: 1
+  },
+  {
+    question: "Mujhe tum kaise bulana pasand karogi?",
+    options: ["😎 Boss", "🥰 Jaan", "😂 Bandariya"],
+    correct: 1
+  },
+  {
+    question: "Future me tum mujhe kya bologi?",
+    options: ["💔 Ex", "💖 Hubby", "😡 Enemy"],
+    correct: 1
+  }
+];
+
+const funnyWrong = [
+  "😂 Arey waah… ye answer to mere dil ko lag gaya!",
+  "😜 Close… par pyaar thoda left me tha.",
+  "🤣 Yeh wali choice dekh ke Cupid bhi confuse ho gaya.",
+  "🙈 Not this one! Dil se socho, dimaag se nahi."
+];
+
+let qIndex = 0;
+
+/* ------------ Helpers ------------ */
+function rand(min, max){ return Math.random() * (max - min) + min; }
+
+function moveRunaway(btn){
+  const box = document.getElementById("options");
+  const bw = btn.offsetWidth || 100;
+  const bh = btn.offsetHeight || 44;
+  const maxX = Math.max(0, box.clientWidth - bw);
+  const maxY = Math.max(0, box.clientHeight - bh);
+
+  // random new position within bounds
+  const x = rand(0, maxX);
+  const y = rand(0, maxY);
+  btn.style.left = x + "px";
+  btn.style.top  = y + "px";
+}
+
+/* ------------ Render Question ------------ */
+function loadQuestion(){
+  const q = quiz[qIndex];
+  document.getElementById("question").textContent = q.question;
+
+  const opts = document.getElementById("options");
+  opts.innerHTML = ""; // clear
+  document.getElementById("message").textContent = "";
+
+  q.options.forEach((text, i)=>{
+    const btn = document.createElement("button");
+    btn.className = "btn" + (i%2 ? " alt" : "");
+    btn.textContent = text;
+
+    if(q.blockNo && /no/i.test(text)){
+      // Make “No” runaway (hover + touch)
+      btn.classList.add("runaway");
+      // initial place somewhere inside container
+      moveRunaway(btn);
+
+      const skitter = ()=> moveRunaway(btn);
+
+      // for mouse / pointer
+      btn.addEventListener("pointerenter", skitter);
+      btn.addEventListener("pointermove", skitter);
+
+      // for touch
+      btn.addEventListener("touchstart", (e)=>{ e.preventDefault(); skitter(); }, {passive:false});
+      // clicking “No” still won't progress; but if somehow clicked, ignore:
+      btn.addEventListener("click", (e)=> { e.preventDefault(); skitter(); });
+      opts.appendChild(btn);
+
+      // keep Yes button clickable
+      return;
+    }
+
+    // normal options
+    btn.addEventListener("click", ()=> checkAnswer(i));
+    opts.appendChild(btn);
+  });
+}
+
+/* ------------ Check Answer ------------ */
+function checkAnswer(choice){
+  const q = quiz[qIndex];
+  const msg = document.getElementById("message");
+
+  if(choice === q.correct){
+    msg.textContent = "💘 Wah! Perfect answer 😍";
+    qIndex++;
+    if(qIndex < quiz.length){
+      setTimeout(loadQuestion, 900);
+    } else {
+      endGame();
+    }
+  } else {
+    msg.textContent = funnyWrong[Math.floor(Math.random()*funnyWrong.length)];
+  }
+}
+
+/* ------------ Finish ------------ */
+function endGame(){
+  const game = document.getElementById("game");
+  game.innerHTML = `
+    <h1 style="font-size:2.2rem; margin-bottom:6px;">🎉 U Won ❤️</h1>
+    <h2 style="margin:0 0 18px;">… and U Win My Heart 💖</h2>
+    <p style="opacity:.9;">Ab na kehna: “option hi nahi tha” — pyaar ka option to hamesha hota hai 😌</p>
+    <button class="btn" style="margin-top:18px;" onclick="location.reload()">Play Again</button>
+  `;
+}
+
+/* init */
+loadQuestion();
+const questions = [
+  "Do you like me? ❤️",
+  "Will you go on a date with me? 🍕",
+  "Do you enjoy talking to me? 📱",
+  "Am I special to you? ✨",
+  "Will you always stay with me? 💖"
+];
+
+let currentQ = 0;
+const questionEl = document.getElementById("question");
+const yesBtn = document.getElementById("yesBtn");
+const noBtn = document.getElementById("noBtn");
+const gameOver = document.getElementById("gameOver");
+
+// Mobile + Desktop dono ke liye NO button runaway effect
+function moveNoBtn() {
+  const x = Math.floor(Math.random() * 150) - 75;
+  const y = Math.floor(Math.random() * 150) - 75;
+  noBtn.style.transform = `translate(${x}px, ${y}px)`;
+}
+
+noBtn.addEventListener("mouseover", moveNoBtn);   // Desktop hover
+noBtn.addEventListener("touchstart", moveNoBtn);  // Mobile touch
+
+yesBtn.addEventListener("click", () => {
+  currentQ++;
+  if (currentQ < questions.length) {
+    questionEl.textContent = questions[currentQ];
+  } else {
+    questionEl.style.display = "none";
+    yesBtn.style.display = "none";
+    noBtn.style.display = "none";
+    gameOver.style.display = "block";
+  }
+});
+</script>
+    </body>
+</html>
